@@ -1,10 +1,11 @@
 import argparse
 
+
 parser = argparse.ArgumentParser(description='Config for LightGCN')
 
 parser.add_argument('--dataset', type=str, default='movielens', choices=['movielens'])
-parser.add_argument('--min_ratings_user', type=int, default=5)
-parser.add_argument('--min_ratings_item', type=int, default=5)
+parser.add_argument('--min_user_cnt', type=int, default=5)
+parser.add_argument('--min_item_cnt', type=int, default=5)
 parser.add_argument('--test_ratio', type=float, default=0.2)
 parser.add_argument('--valid_ratio', type=float, default=0.1)
 parser.add_argument('--num_neg_samples', type=int, default=1)
@@ -15,5 +16,3 @@ parser.add_argument('--lr', type=float, default=0.005)
 parser.add_argument('--num_epochs', type=int, default=10)
 parser.add_argument('--lambda_reg', type=float, default=0.0005)
 parser.add_argument('--device', type=str, default='cuda', choices=['cuda', 'cpu'])
-
-args = parser.parse_args()
