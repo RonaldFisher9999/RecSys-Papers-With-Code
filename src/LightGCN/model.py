@@ -52,7 +52,7 @@ class LightGCN(nn.Module):
         
         return score
     
-    def recommend(self, user_index: int, rated_items: NDArray[np.int64], k:int = 100) -> list[int]:
+    def recommend(self, user_index: int, rated_items: NDArray[np.int64], k: int = 20) -> list[int]:
         score = self.user_final_emb[user_index] @ self.item_final_emb.T
         score[rated_items] = -float('inf')
         

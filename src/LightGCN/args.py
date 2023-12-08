@@ -4,6 +4,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Config for LightGCN')
 
 parser.add_argument('--dataset', type=str, default='movielens', choices=['movielens'])
+parser.add_argument('--seed', type=int, default=100)
 parser.add_argument('--min_user_cnt', type=int, default=5)
 parser.add_argument('--min_item_cnt', type=int, default=5)
 parser.add_argument('--test_ratio', type=float, default=0.2)
