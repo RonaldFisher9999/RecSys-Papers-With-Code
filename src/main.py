@@ -1,19 +1,12 @@
 from args import parser
-from model import LightGCN
-from process import DataProcessor
-from trainer import LightGCNTrainer
-import random
+from LightGCN.model import LightGCN
+from LightGCN.process import DataProcessor
+from LightGCN.trainer import LightGCNTrainer
+from utils import set_seeds
+
 import numpy as np
-import torch
 
 
-def set_seeds(seed: int):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
     
 def main():
     config = parser.parse_args()
@@ -40,7 +33,7 @@ def main():
     print(model)
     
     trainer = LightGCNTrainer(config.num_epochs, num_users, num_items, config.num_neg_samples,
-                              config.lr, config.batch_size, config.lambda_reg, config.device)
+                              config.lr, config.batch_size, config.lambda_reg, config.device, config.checkpoint_dir)
     trainer.train(model, edge_index, train, valid)
     
 if __name__=='__main__':

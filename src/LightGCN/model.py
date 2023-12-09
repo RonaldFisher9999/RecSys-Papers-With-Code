@@ -19,12 +19,18 @@ class LightGCN(nn.Module):
         
         self.user_emb = nn.Embedding(self.num_users, self.emb_dim)
         self.item_emb = nn.Embedding(self.num_items, self.emb_dim)
+        self.reset_parameters()
         self.conv_layers = nn.ModuleList([LGConv() for _ in range(self.num_layers)])
         self.alpha = 1 / (self.num_layers + 1)
         
         self.user_final_emb = None
         self.item_final_emb = None
-        
+    
+    def reset_parameters(self):
+        for emb in self.modules():
+            if isinstance(emb, nn.Embedding):
+                torch.nn.init.xavier_uniform_(emb.weight)
+                
     def get_embedding(self, edge_index: torch.LongTensor) -> torch.Tensor:
         x_user = self.user_emb.weight
         x_item = self.item_emb.weight

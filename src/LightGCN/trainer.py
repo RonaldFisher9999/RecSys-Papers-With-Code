@@ -1,10 +1,12 @@
 import torch
 from torch.utils.data import DataLoader
-from model import LightGCN
 import torch.nn as nn
 from tqdm import tqdm
 import pandas as pd
-import numpy as np
+import os
+
+from LightGCN.model import LightGCN
+from utils import get_neg_items, recall_k, ndcg_k
 
 
 class BPRLoss(nn.Module):
@@ -22,42 +24,6 @@ class BPRLoss(nn.Module):
             reg_loss = self.lambda_reg * params.norm(2).pow(2) / pos_score.shape[0]
             
         return -loss + reg_loss
-    
- 
-def get_neg_items(rating: pd.Series, n_items: int, num_neg_samples: int):
-    print(f'{num_neg_samples} negative samples for each positive item')
-    num_total_pos_items = sum(map(np.size, rating.values))
-    total_neg_items = np.zeros((num_neg_samples, num_total_pos_items))
-    total_items = np.arange(n_items)
-    offset = 0
-    for user in rating.index:
-        pos_items = rating[user]
-        candi_items = np.setdiff1d(total_items, pos_items)
-        neg_items = candi_items[np.random.randint(0, candi_items.size, pos_items.size * num_neg_samples)]
-        total_neg_items[:, offset : offset + pos_items.size] = neg_items.reshape(-1,  pos_items.size)
-        offset += pos_items.size
-    
-    return torch.tensor(total_neg_items, dtype=torch.int64)
-
-
-def recall_k(y_true: list[list[int]], y_pred: list[list[int]], k: int) -> float:
-    total_recall = 0
-    for true, pred in zip(y_true, y_pred):
-        recall = len(set(true) & set(pred[:k])) / min(len(true), k)
-        total_recall += recall
-    
-    return round(total_recall / len(y_true), 3)
-
-def ndcg_k(y_true: list[list[int]], y_pred: list[list[int]],  k: int):
-    total_ndcg = 0
-    for true, pred in zip(y_true, y_pred):
-        true = set(true)
-        hit_list = np.array([1 if x in true else 0 for x in pred[:k]])
-        dcg = (hit_list / np.log2(1 + np.arange(1, 1 + len(hit_list)))).sum()
-        idcg = (1 / np.log2(1 + np.arange(1, 1 + min(len(true), k)))).sum()
-        total_ndcg += dcg / idcg
-    
-    return round(total_ndcg / len(y_true), 3)
 
    
 class LightGCNTrainer:
@@ -69,7 +35,8 @@ class LightGCNTrainer:
                  lr: float,
                  batch_size: int,
                  lambda_reg: float,
-                 device: str):
+                 device: str,
+                 checkpoint_dir: str):
         self.num_epochs = num_epochs
         self.num_users = num_users
         self.num_items = num_items
@@ -78,6 +45,7 @@ class LightGCNTrainer:
         self.batch_size = batch_size
         self.lambda_reg = lambda_reg
         self.device = device
+        self.best_model_path = os.path.join(checkpoint_dir, 'lightgcn.pt')
     
     def train(self,
               model: LightGCN,
@@ -127,12 +95,12 @@ class LightGCNTrainer:
                  model: LightGCN,
                  rating_train: pd.Series,
                  rating_valid: pd.Series,
-                 k: int=20):
+                 k: int=10):
         y_true = list()
         y_pred = list()
         for user in rating_train.index:
             rated_items = rating_train[user]
-            pred = model.recommend(user, rated_items)
+            pred = model.recommend(user, rated_items, k)
             true = rating_valid[user].tolist()
             y_true.append(true)
             y_pred.append(pred)

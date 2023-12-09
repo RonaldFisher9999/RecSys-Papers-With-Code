@@ -13,7 +13,7 @@ class DataProcessor:
                  test_ratio: float,
                  valid_ratio: float):
         self.dataset = dataset
-        self.data_dir = os.path.join('dataset/', self.dataset)
+        self.data_dir = os.path.join('../dataset/', self.dataset)
         self.min_user_counts = min_user_cnt
         self.min_item_counts = min_item_cnt
         self.test_ratio = test_ratio
