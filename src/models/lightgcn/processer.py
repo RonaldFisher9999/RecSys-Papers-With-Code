@@ -3,9 +3,9 @@ import pickle
 import pandas as pd
 import numpy as np
 import torch
-from numpy.typing import NDArray
 
-class DataProcessor:
+
+class LightGCNDataProcessor:
     def __init__(self,
                  dataset: str,
                  min_user_cnt: int,

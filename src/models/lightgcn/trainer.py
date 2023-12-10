@@ -5,7 +5,7 @@ from tqdm import tqdm
 import pandas as pd
 import os
 
-from LightGCN.model import LightGCN
+from models.lightgcn.model import LightGCN
 from utils import get_neg_items, recall_k, ndcg_k
 
 
@@ -70,6 +70,7 @@ class LightGCNTrainer:
                         ):
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
         total_loss = 0
+        print(neg_items)
         for index in tqdm(train_loader):
             user_index = edge_index[0, index]
             item_index = edge_index[1, index]
