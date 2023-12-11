@@ -3,7 +3,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Config for LightGCN')
 
-parser.add_argument('--dataset', type=str, default='movielens', choices=['movielens'])
+parser.add_argument('--dataset', type=str, default='movielens', choices=['movielens', 'gowalla'])
 parser.add_argument('--model', type=str, default='lightgcn', choices=['lightgcn'])
 parser.add_argument('--seed', type=int, default=100)
 parser.add_argument('--min_user_cnt', type=int, default=5)

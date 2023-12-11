@@ -1,5 +1,6 @@
 from args import parser
-from models.lightgcn import LightGCNDataProcessor, LightGCN, LightGCNTrainer
+from data.process import LightGCNDataProcessor
+from models.lightgcn import LightGCN, LightGCNTrainer
 from utils import set_seeds
 
  
@@ -15,12 +16,15 @@ def main():
         config.test_ratio,
         config.valid_ratio      
     )
-    edge_index, train, valid, test, num_users, num_items = processor.process()
+    edge_index, train, valid, test, n_users, n_items = processor.process()
+    print(f'Number Of Users: {n_users}')
+    print(f'Number Of Items: {n_items}')
+    print(f'Number Of Ratings: {edge_index.shape[1]}')
     
-    model = LightGCN(num_users, num_items, config.num_layers, config.emb_dim).to(config.device)
+    model = LightGCN(n_users, n_items, config.num_layers, config.emb_dim).to(config.device)
     print(model)
     
-    trainer = LightGCNTrainer(config.num_epochs, num_users, num_items, config.num_neg_samples,
+    trainer = LightGCNTrainer(config.num_epochs, n_users, n_items, config.num_neg_samples,
                               config.lr, config.batch_size, config.lambda_reg, config.device, config.checkpoint_dir)
     trainer.train(model, edge_index, train, valid)
     

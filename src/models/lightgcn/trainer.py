@@ -79,7 +79,7 @@ class LightGCNTrainer:
             for i in range(neg_items.shape[0]):
                 neg_item_index = neg_items[i, index]
                 neg_score = neg_score + model.forward(edge_index, user_index, neg_item_index)
-            
+            neg_score = neg_score / neg_items.shape[0]
             if self.lambda_reg != 0:
                 params = torch.cat([model.user_emb.weight, model.item_emb.weight], dim=0)
             else:

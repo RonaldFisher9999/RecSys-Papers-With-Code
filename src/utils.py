@@ -1,3 +1,4 @@
+from argparse import Namespace
 import torch
 import numpy as np
 import random
@@ -47,3 +48,15 @@ def ndcg_k(y_true: list[list[int]], y_pred: list[list[int]],  k: int):
         total_ndcg += dcg / idcg
     
     return round(total_ndcg / len(y_true), 6)
+
+def process_data():
+    pass
+
+def build_model():
+    pass
+
+def train_model():
+    pass
+
+def evaluate_model():
+    pass
