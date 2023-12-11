@@ -15,7 +15,7 @@ def load_rating_data(data_dir: str, dataset: str) -> pd.DataFrame:
                         header=None,
                         encoding='latin1').iloc[:, :2]
         rating_df.columns = ['user_id', 'item_id']
-    if dataset == 'gowalla':
+    elif dataset == 'gowalla':
         rating_df = pd.read_csv(os.path.join(data_dir, 'Gowalla_totalCheckins.txt'),
                                 sep='\t', header=None).iloc[:, [0, 4]]
         rating_df.columns = ['user_id', 'item_id']

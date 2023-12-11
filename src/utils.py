@@ -13,7 +13,6 @@ def set_seeds(seed: int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     
-    
 def get_neg_items(rating: pd.Series, n_items: int, num_neg_samples: int) -> torch.LongTensor:
     print(f'{num_neg_samples} negative samples for each positive item')
     num_total_pos_items = sum(map(np.size, rating.values))
@@ -28,7 +27,6 @@ def get_neg_items(rating: pd.Series, n_items: int, num_neg_samples: int) -> torc
         offset += pos_items.size
     
     return torch.tensor(total_neg_items, dtype=torch.int64)
-
 
 def recall_k(y_true: list[list[int]], y_pred: list[list[int]], k: int) -> float:
     total_recall = 0
@@ -48,15 +46,3 @@ def ndcg_k(y_true: list[list[int]], y_pred: list[list[int]],  k: int):
         total_ndcg += dcg / idcg
     
     return round(total_ndcg / len(y_true), 6)
-
-def process_data():
-    pass
-
-def build_model():
-    pass
-
-def train_model():
-    pass
-
-def evaluate_model():
-    pass

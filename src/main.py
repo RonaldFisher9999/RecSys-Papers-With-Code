@@ -19,13 +19,11 @@ def main():
     edge_index, train, valid, test, n_users, n_items = processor.process()
     print(f'Number Of Users: {n_users}')
     print(f'Number Of Items: {n_items}')
-    print(f'Number Of Ratings: {edge_index.shape[1]}')
     
     model = LightGCN(n_users, n_items, config.num_layers, config.emb_dim).to(config.device)
-    print(model)
-    
     trainer = LightGCNTrainer(config.num_epochs, n_users, n_items, config.num_neg_samples,
-                              config.lr, config.batch_size, config.lambda_reg, config.device, config.checkpoint_dir)
+                              config.lr, config.batch_size, config.lambda_reg,
+                              config.device, config.checkpoint_dir, config.dataset)
     trainer.train(model, edge_index, train, valid)
     
 if __name__=='__main__':

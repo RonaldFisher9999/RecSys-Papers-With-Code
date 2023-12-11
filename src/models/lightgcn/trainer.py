@@ -36,7 +36,8 @@ class LightGCNTrainer:
                  batch_size: int,
                  lambda_reg: float,
                  device: str,
-                 checkpoint_dir: str):
+                 checkpoint_dir: str,
+                 dataset: str):
         self.num_epochs = num_epochs
         self.num_users = num_users
         self.num_items = num_items
@@ -45,7 +46,8 @@ class LightGCNTrainer:
         self.batch_size = batch_size
         self.lambda_reg = lambda_reg
         self.device = device
-        self.best_model_path = os.path.join(checkpoint_dir, 'lightgcn.pt')
+        self.best_model_path = os.path.join(checkpoint_dir, f'lightgcn_{dataset}.pt')
+        self.best_score = 0.0
     
     def train(self,
               model: LightGCN,
@@ -59,7 +61,8 @@ class LightGCNTrainer:
             print(f'Epoch {epoch}')
             neg_items = get_neg_items(rating_train, self.num_items, self.num_neg_samples)
             self.train_one_epoch(model, edge_index, train_loader, neg_items, loss_fn)
-            self.validate(model, rating_train, rating_valid)
+            recall, ndcg = self.validate(model, rating_train, rating_valid)
+            self.update_model(model, ndcg)
     
     def train_one_epoch(self,
                         model: LightGCN, 
@@ -70,7 +73,6 @@ class LightGCNTrainer:
                         ):
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
         total_loss = 0
-        print(neg_items)
         for index in tqdm(train_loader):
             user_index = edge_index[0, index]
             item_index = edge_index[1, index]
@@ -96,7 +98,7 @@ class LightGCNTrainer:
                  model: LightGCN,
                  rating_train: pd.Series,
                  rating_valid: pd.Series,
-                 k: int=10):
+                 k: int=10) -> tuple[float, float]:
         y_true = list()
         y_pred = list()
         for user in rating_train.index:
@@ -106,8 +108,17 @@ class LightGCNTrainer:
             y_true.append(true)
             y_pred.append(pred)
         
-        print(f'Recall@{k}: {recall_k(y_true, y_pred, k)}')
-        print(f'NDCG@{k}: {ndcg_k(y_true, y_pred, k)}')
+        recall = recall_k(y_true, y_pred, k)
+        ndcg = ndcg_k(y_true, y_pred, k)
+        print(f'Recall@{k}: {recall}')
+        print(f'NDCG@{k}: {ndcg}')
         
+        return recall, ndcg
+    
+    def update_model(self, model: LightGCN, score: float):
+        if self.best_score < score:
+            print(f'Best Metric Updated {self.best_score} -> {score}')
+            self.best_score = score
+            torch.save(model, self.best_model_path)
 
     
