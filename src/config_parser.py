@@ -1,7 +1,7 @@
 import argparse
 
 
-parser = argparse.ArgumentParser(description='Config for LightGCN')
+parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset', type=str, default='movielens', choices=['movielens', 'gowalla'])
 parser.add_argument('--model', type=str, default='lightgcn', choices=['lightgcn'])
