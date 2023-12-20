@@ -4,10 +4,11 @@ import pandas as pd
 import torch
 
 @dataclass
-class LightGCNData:
+class BaseData:
+    rating_train: pd.Series
+    rating_val: pd.Series | None
+    rating_test: pd.Series | None
+    
+
+class LightGCNData(BaseData):
     edge_index: torch.LongTensor
-    train: pd.Series
-    valid: pd.Series
-    test: pd.Series
-    n_users: int
-    n_items: int
