@@ -60,17 +60,19 @@ class LightGCNTrainer:
         for epoch in range(1, self.num_epochs + 1):
             print(f'Epoch {epoch}')
             neg_items = get_neg_items(rating_train, self.num_items, self.num_neg_samples)
-            self.train_one_epoch(model, edge_index, train_loader, neg_items, loss_fn)
-            recall, ndcg = self.validate(model, rating_train, rating_valid)
-            self.update_model(model, ndcg)
+            self._fit(model, edge_index, train_loader, neg_items, loss_fn)
+            recall, ndcg = self._validate(model, rating_train, rating_valid)
+            self._update_best_model(model, ndcg)
+        
+        return self._load_best_model()
     
-    def train_one_epoch(self,
-                        model: LightGCN, 
-                        edge_index: torch.LongTensor,
-                        train_loader: DataLoader,
-                        neg_items: torch.LongTensor,
-                        loss_fn: BPRLoss,
-                        ):
+    def _fit(self,
+             model: LightGCN, 
+             edge_index: torch.LongTensor,
+             train_loader: DataLoader,
+             neg_items: torch.LongTensor,
+             loss_fn: BPRLoss,
+             ):
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
         total_loss = 0
         for index in tqdm(train_loader):
@@ -94,7 +96,7 @@ class LightGCNTrainer:
             
         print(f'Train Loss: {total_loss}')
 
-    def validate(self,
+    def _validate(self,
                  model: LightGCN,
                  rating_train: pd.Series,
                  rating_valid: pd.Series,
@@ -115,10 +117,11 @@ class LightGCNTrainer:
         
         return recall, ndcg
     
-    def update_model(self, model: LightGCN, score: float):
+    def _update_best_model(self, model: LightGCN, score: float):
         if self.best_score < score:
             print(f'Best Metric Updated {self.best_score} -> {score}')
             self.best_score = score
             torch.save(model, self.best_model_path)
-
-    
+            
+    def _load_best_model(self):
+        return torch.load(self.best_model_path, map_location=self.device)
