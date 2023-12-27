@@ -4,8 +4,10 @@ from torch_geometric.nn import LGConv
 import numpy as np
 from numpy.typing import NDArray
 
+from models.common import BaseModel
 
-class LightGCN(nn.Module):
+
+class LightGCN(BaseModel):
     def __init__(self,
                  num_users: int,
                  num_items: int,

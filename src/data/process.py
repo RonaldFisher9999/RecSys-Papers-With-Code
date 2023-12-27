@@ -4,29 +4,34 @@ import numpy as np
 import pandas as pd
 import torch
 
-from data.datamodel import LightGCNData
+from config import Config
 
 
-def load_rating_data(data_dir: str, dataset: str) -> pd.DataFrame:
+def load_raw_data(dataset: str) -> pd.DataFrame:
+    data_dir = os.path.join(f'../dataset/{dataset}')
     if dataset == 'movielens':
         rating_df = pd.read_csv(os.path.join(data_dir, 'ratings.dat'),
                         sep='::',
                         engine='python',
                         header=None,
-                        encoding='latin1').iloc[:, :2]
-        rating_df.columns = ['user_id', 'item_id']
+                        encoding='latin1').iloc[:, [0, 1, 3]]
+        rating_df.columns = ['user_id', 'item_id', 'timestamp']
+        rating_df['timestamp'] = pd.to_datetime(rating_df['timestamp'], unit='s')
     elif dataset == 'gowalla':
         rating_df = pd.read_csv(os.path.join(data_dir, 'Gowalla_totalCheckins.txt'),
-                                sep='\t', header=None).iloc[:, [0, 4]]
-        rating_df.columns = ['user_id', 'item_id']
+                                sep='\t', header=None).iloc[:, [0, 4, 1]]
+        rating_df.columns = ['user_id', 'item_id', 'timestamp']
+        rating_df['timestamp'] = pd.to_datetime(rating_df['timestamp'], utc=True).dt.tz_localize(None)
     else:
         raise NotImplementedError('Other datasets are not available.')
     
     return rating_df
 
-def filter_users_items(rating_df: pd.DataFrame,
-                       min_user_cnt: int,
-                       min_item_cnt: int) -> pd.DataFrame:
+def filter_user_item(rating_df: pd.DataFrame,
+                     min_user_cnt: int,
+                     min_item_cnt: int) -> pd.DataFrame:
+    rating_df = rating_df.drop_duplicates(subset=['user_id', 'item_id'])
+    
     while True:
         user_cnt = rating_df['user_id'].value_counts()
         item_cnt = rating_df['item_id'].value_counts()
@@ -40,25 +45,14 @@ def filter_users_items(rating_df: pd.DataFrame,
     
     return filtered_df
         
-    
-def process_rating_df(rating_df: pd.DataFrame,
-                      min_user_cnt: int,
-                      min_item_cnt: int) -> tuple[pd.Series, int, int]:
-    rating_df = rating_df.drop_duplicates(subset=['user_id', 'item_id'])
-    
-    rating_df = filter_users_items(rating_df, min_user_cnt, min_item_cnt)
-
+def apply_index_mapper(rating_df: pd.DataFrame) -> pd.DataFrame:
     user2idx = {v: i for i, v in enumerate(rating_df['user_id'].unique())}
     item2idx = {v: i for i, v in enumerate(rating_df['item_id'].unique())}
     rating_df['user_id'] = rating_df['user_id'].map(user2idx)
     rating_df['item_id'] = rating_df['item_id'].map(item2idx)
 
-    rating_total = rating_df.groupby('user_id')['item_id'].apply(np.array)
-    n_users = len(user2idx)
-    n_items = len(item2idx)
-
-    return rating_total, n_users, n_items
-
+    return rating_df
+    
 def train_test_split(rating_total: pd.Series, ratio: float) -> tuple[pd.Series, pd.Series]:
     rating_total = rating_total.apply(np.random.permutation)
     rating_train = dict()
@@ -82,27 +76,10 @@ def convert_to_edge_index(rating: pd.Series, n_users: int) -> torch.LongTensor:
 
     return torch.cat([edge_index, edge_index_rev], dim=1)
 
+def process_data(config: Config):
+    rating_df = load_raw_data(config.dataset)
+    rating_df = filter_user_item(rating_df, config.min_user_cnt, config.min_item_cnt)
+    rating_total = rating_df.groupby('user_id')['item_id'].apply(np.array)
 
-class LightGCNDataProcessor:
-    def __init__(self,
-                 dataset: str,
-                 min_user_cnt: int,
-                 min_item_cnt: int,
-                 test_ratio: float,
-                 val_ratio: float):
-        self.dataset = dataset
-        self.data_dir = os.path.join('../dataset/', self.dataset)
-        self.min_user_cnt = min_user_cnt
-        self.min_item_cnt = min_item_cnt
-        self.test_ratio = test_ratio
-        self.val_ratio = val_ratio
-        
-    def process(self):
-        rating_df = load_rating_data(self.data_dir, self.dataset)
-        rating_total, n_users, n_items = process_rating_df(rating_df, self.min_user_cnt, self.min_item_cnt)
-        rating_tr_val, rating_test = train_test_split(rating_total, self.test_ratio)
-        rating_train, rating_val = train_test_split(rating_tr_val, self.val_ratio)
-        edge_index = convert_to_edge_index(rating_train, n_users)
-        
-        return edge_index, rating_train, rating_val, rating_test, n_users, n_items
+    return
     
