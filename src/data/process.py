@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 
 from config import Config
+from data.datamodel import GraphModelData, BaseData, BaseDataInfo
 
 
 def load_raw_data(dataset: str) -> pd.DataFrame:
@@ -67,7 +68,7 @@ def train_test_split(rating_total: pd.Series, ratio: float) -> tuple[pd.Series, 
     
     return rating_train, rating_test
 
-def convert_to_edge_index(rating: pd.Series, n_users: int) -> torch.LongTensor:
+def get_edge_index(rating: pd.Series, n_users: int) -> torch.LongTensor:
     rating_explode = rating.explode()
     user_index = rating_explode.index.values.astype(np.int64)
     item_index = rating_explode.values.astype(np.int64) + n_users
@@ -76,10 +77,28 @@ def convert_to_edge_index(rating: pd.Series, n_users: int) -> torch.LongTensor:
 
     return torch.cat([edge_index, edge_index_rev], dim=1)
 
-def process_data(config: Config):
+def process_data(config: Config) -> tuple[BaseData, BaseDataInfo]:
     rating_df = load_raw_data(config.dataset)
     rating_df = filter_user_item(rating_df, config.min_user_cnt, config.min_item_cnt)
+    rating_df = apply_index_mapper(rating_df)
+    num_users = rating_df['user_id'].nunique()
+    num_items = rating_df['item_id'].nunique()
     rating_total = rating_df.groupby('user_id')['item_id'].apply(np.array)
-
-    return
+    rating_train_val, rating_test = train_test_split(rating_total, config.val_ratio)
+    rating_train, rating_val = train_test_split(rating_train_val, config.test_ratio)
+    
+    if config.model in ['lightgcn']:
+        edge_index = get_edge_index(rating_train, num_users)
+        data = GraphModelData(
+            edge_index=edge_index,
+            rating_train=rating_train,
+            rating_val=rating_val,
+            rating_test=rating_test
+        )
+        data_info = BaseDataInfo(num_users=num_users, num_items=num_items)
+    else:
+        NotImplementedError('Other datasets are not available.')
+        
+    return data, data_info
+        
     

@@ -10,6 +10,7 @@ def main():
     data, data_info = process_data(config)
     trainer = build_model_trainer(config, data_info)
     model = trainer.train(data)
+    exit()
     eval_model(model, data)
     
 

@@ -18,6 +18,7 @@ class Config:
     num_epochs: int = 20
     lambda_reg: float = 0.0001
     device: str = 'cuda'
+    checkpoint_dir: str = 'checkpoint/'
 
 def config_parser() -> Config:
     parser = argparse.ArgumentParser()
@@ -37,6 +38,7 @@ def config_parser() -> Config:
     parser.add_argument('--num_epochs', type=int, default=Config.num_epochs)
     parser.add_argument('--lambda_reg', type=float, default=Config.lambda_reg)
     parser.add_argument('--device', type=str, choices=['cuda', 'cpu'], default=Config.device)
+    parser.add_argument('--checkpoint_dir', type=str, default=Config.checkpoint_dir)
 
     args = parser.parse_args()
     config = Config(**vars(args))

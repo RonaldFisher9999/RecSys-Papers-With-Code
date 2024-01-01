@@ -16,6 +16,9 @@ class BaseModelTrainer:
     def train(self):
         raise NotImplementedError
     
+    def _build_model(self):
+        raise NotImplementedError
+    
     def _fit(self):
         raise NotImplementedError
     

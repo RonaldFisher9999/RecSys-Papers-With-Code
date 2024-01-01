@@ -21,19 +21,19 @@ class LightGCN(BaseModel):
         
         self.user_emb = nn.Embedding(self.num_users, self.emb_dim)
         self.item_emb = nn.Embedding(self.num_items, self.emb_dim)
-        self.reset_parameters()
+        self._reset_parameters()
         self.conv_layers = nn.ModuleList([LGConv() for _ in range(self.num_layers)])
         self.alpha = 1 / (self.num_layers + 1)
         
         self.user_final_emb = None
         self.item_final_emb = None
     
-    def reset_parameters(self):
+    def _reset_parameters(self):
         for emb in self.modules():
             if isinstance(emb, nn.Embedding):
                 torch.nn.init.xavier_uniform_(emb.weight)
                 
-    def get_embedding(self, edge_index: torch.LongTensor) -> torch.Tensor:
+    def _get_embedding(self, edge_index: torch.LongTensor) -> torch.Tensor:
         x_user = self.user_emb.weight
         x_item = self.item_emb.weight
         x = torch.cat([x_user, x_item], dim=0)
@@ -53,12 +53,15 @@ class LightGCN(BaseModel):
                 edge_index: torch.LongTensor,
                 user_index: torch.LongTensor,
                 item_index: torch.LongTensor) -> torch.Tensor:
-        out = self.get_embedding(edge_index)
+        out = self._get_embedding(edge_index)
         out_user = out[user_index]
         out_item = out[item_index]
         score = (out_user * out_item).sum(dim=-1)
         
         return score
+    
+    def calc_loss(self):
+        pass
     
     def recommend(self, user_index: int, rated_items: NDArray[np.int64], k: int = 20) -> list[int]:
         score = self.user_final_emb[user_index] @ self.item_final_emb.T
