@@ -8,7 +8,7 @@ def main():
     config = config_parser()
     prepare_training(config)
     data, data_info = process_data(config)
-    trainer = build_model_trainer(config, data_info)
+    trainer = build_model_trainer(config, data, data_info)
     model = trainer.train(data)
     exit()
     eval_model(model, data)

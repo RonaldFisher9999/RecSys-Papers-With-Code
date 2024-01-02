@@ -16,7 +16,7 @@ class Config:
     batch_size: int = 1024
     lr: float = 0.005
     num_epochs: int = 20
-    lambda_reg: float = 0.0001
+    reg_2: float = 0.0001
     device: str = 'cuda'
     checkpoint_dir: str = 'checkpoint/'
 
@@ -36,7 +36,7 @@ def config_parser() -> Config:
     parser.add_argument('--batch_size', type=int, default=Config.batch_size)
     parser.add_argument('--lr', type=float, default=Config.lr)
     parser.add_argument('--num_epochs', type=int, default=Config.num_epochs)
-    parser.add_argument('--lambda_reg', type=float, default=Config.lambda_reg)
+    parser.add_argument('--reg_2', type=float, default=Config.reg_2)
     parser.add_argument('--device', type=str, choices=['cuda', 'cpu'], default=Config.device)
     parser.add_argument('--checkpoint_dir', type=str, default=Config.checkpoint_dir)
 
