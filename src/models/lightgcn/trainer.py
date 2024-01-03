@@ -14,7 +14,7 @@ from eval import ndcg_k, recall_k
 
 
 def get_neg_items(rating: pd.Series, num_users: int, num_items: int, num_neg_samples: int) -> torch.LongTensor:
-    print(f'{num_neg_samples} negative samples for each positive item')
+    print(f'Sample {num_neg_samples} negative items for each positive item.')
     num_total_pos_items = sum(map(np.size, rating.values))
     total_neg_items = np.zeros((num_neg_samples, num_total_pos_items))
     total_items = np.arange(num_items)
@@ -53,10 +53,12 @@ class LightGCNTrainer(BaseModelTrainer):
     def train(self, data: GraphModelData):
         edge_index = data.edge_index
         train_loader = DataLoader(range(edge_index.shape[1] // 2), batch_size=self.batch_size, shuffle=True, drop_last=False)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        print(f'Start training for {self.num_epochs} epochs.')
         for epoch in range(1, self.num_epochs + 1):
             print(f'Epoch {epoch}')
             total_neg_items = get_neg_items(data.rating_train, self.num_users, self.num_items, self.num_neg_samples)
-            self._fit(edge_index, train_loader, total_neg_items)
+            self._fit(edge_index, train_loader, total_neg_items, optimizer)
             recall, ndcg = self._validate(data.rating_train, data.rating_val)
             self._update_best_model(ndcg)
         
@@ -71,8 +73,8 @@ class LightGCNTrainer(BaseModelTrainer):
              edge_index: torch.LongTensor,
              train_loader: DataLoader,
              total_neg_items: torch.LongTensor,
-             ):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+             optimizer: torch.optim.Optimizer):
+        print('Train model.')
         total_loss = 0
         for index in tqdm(train_loader):
             user_index = edge_index[0, index]
@@ -89,7 +91,8 @@ class LightGCNTrainer(BaseModelTrainer):
     def _validate(self,
                  rating_train: pd.Series,
                  rating_valid: pd.Series,
-                 k: int=10) -> tuple[float, float]:
+                 k: int=20) -> tuple[float, float]:
+        print('Validate model.')
         y_true = list()
         y_pred = list()
         for user in rating_train.index:

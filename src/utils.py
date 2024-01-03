@@ -21,6 +21,7 @@ def prepare_training(config: Config):
     set_seeds(config.seed)
     
 def build_model_trainer(config: Config, data: BaseData, data_info: BaseDataInfo) -> BaseModelTrainer:
+    print(f'Build "{config.model}" trainer.')
     if config.model == 'lightgcn':
         trainer = LightGCNTrainer(config, data, data_info)
     else:
