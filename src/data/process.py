@@ -60,7 +60,7 @@ def train_test_split(rating_total: pd.Series, ratio: float) -> tuple[pd.Series, 
     if ratio == 0:
         return rating_total, None
     else:
-        print(f'Split train/test dataset. split ratio: {ratio}')
+        print(f'Split train/test dataset. Split ratio: {ratio}')
         rating_total = rating_total.apply(np.random.permutation)
         rating_train = dict()
         rating_test = dict()
@@ -101,10 +101,11 @@ def process_data(config: Config) -> tuple[BaseData, BaseDataInfo]:
     if config.model in ['lightgcn']:
         edge_index = get_edge_index(rating_train, num_users)
         data = GraphModelData(
-            edge_index=edge_index,
             rating_train=rating_train,
             rating_val=rating_val,
-            rating_test=rating_test
+            rating_train_val=rating_train_val,
+            rating_test=rating_test,
+            edge_index=edge_index,
         )
         data_info = BaseDataInfo(num_users=num_users, num_items=num_items)
     else:

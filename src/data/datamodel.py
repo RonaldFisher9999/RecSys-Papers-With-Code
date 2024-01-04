@@ -8,6 +8,7 @@ import torch
 class BaseData:
     rating_train: pd.Series
     rating_val: pd.Series
+    rating_train_val: pd.Series
     rating_test: pd.Series
 
 

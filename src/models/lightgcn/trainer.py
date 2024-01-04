@@ -59,10 +59,12 @@ class LightGCNTrainer(BaseModelTrainer):
             print(f'Epoch {epoch}')
             total_neg_items = get_neg_items(data.rating_train, self.num_users, self.num_items, self.num_neg_samples)
             self._fit(edge_index, train_loader, total_neg_items, optimizer)
-            recall, ndcg = self._validate(data.rating_train, data.rating_val)
+            recall, ndcg = self._validate('val', data.rating_train, data.rating_val)
             self._update_best_model(ndcg)
-        
-        return self._load_best_model()
+            
+    def test(self, data: GraphModelData):
+        self._load_best_model()
+        self._validate('test', data.rating_train_val, data.rating_test)
     
     def _build_model(self, edge_index: torch.LongTensor):
         return LightGCN(edge_index.to(self.device),
@@ -89,10 +91,14 @@ class LightGCNTrainer(BaseModelTrainer):
         print(f'Train Loss: {total_loss}')
 
     def _validate(self,
-                 rating_train: pd.Series,
-                 rating_valid: pd.Series,
-                 k: int=20) -> tuple[float, float]:
-        print('Validate model.')
+                  mode: str,
+                  rating_train: pd.Series,
+                  rating_valid: pd.Series,
+                  k: int=20,) -> tuple[float, float]:
+        if mode == 'val':
+            print('Validate model.')
+        if mode == 'test':
+            print('Test model.')
         y_true = list()
         y_pred = list()
         for user in rating_train.index:
@@ -116,4 +122,5 @@ class LightGCNTrainer(BaseModelTrainer):
             torch.save(self.model, self.best_model_path)
             
     def _load_best_model(self):
-        return torch.load(self.best_model_path, map_location=self.device)
+        self.model = torch.load(self.best_model_path, map_location=self.device)
+        

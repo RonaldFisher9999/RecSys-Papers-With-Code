@@ -7,10 +7,9 @@ def main():
     config = prepare_training()
     data, data_info = process_data(config)
     trainer = build_model_trainer(config, data, data_info)
-    model = trainer.train(data)
-    exit()
-    eval_model(model, data)
-    
+    trainer.train(data)
+    trainer.test(data)
+
 
 if __name__=='__main__':
     main()
