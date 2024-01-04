@@ -5,8 +5,8 @@ from eval import eval_model
 
 def main():
     config = prepare_training()
-    data, data_info = process_data(config)
-    trainer = build_model_trainer(config, data, data_info)
+    data = process_data(config)
+    trainer = build_model_trainer(config, data)
     trainer.train(data)
     trainer.test(data)
 

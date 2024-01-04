@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 
 from config import Config
-from data.datamodel import GraphModelData, BaseData, BaseDataInfo
+from data.datamodel import GraphModelData, BaseData
 
 
 def load_raw_data(dataset: str) -> pd.DataFrame:
@@ -84,7 +84,7 @@ def get_edge_index(rating: pd.Series, n_users: int) -> torch.LongTensor:
 
     return torch.cat([edge_index, edge_index_rev], dim=1)
 
-def process_data(config: Config) -> tuple[BaseData, BaseDataInfo]:
+def process_data(config: Config) -> BaseData:
     print('Process data.')
     rating_df = load_raw_data(config.dataset)
     rating_df = filter_user_item(rating_df, config.min_user_cnt, config.min_item_cnt)
@@ -101,16 +101,17 @@ def process_data(config: Config) -> tuple[BaseData, BaseDataInfo]:
     if config.model in ['lightgcn']:
         edge_index = get_edge_index(rating_train, num_users)
         data = GraphModelData(
+            num_users=num_users,
+            num_items=num_items,
             rating_train=rating_train,
             rating_val=rating_val,
             rating_train_val=rating_train_val,
             rating_test=rating_test,
             edge_index=edge_index,
         )
-        data_info = BaseDataInfo(num_users=num_users, num_items=num_items)
     else:
         NotImplementedError('Other datasets are not available.')
         
-    return data, data_info
+    return data
         
     

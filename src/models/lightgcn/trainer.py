@@ -9,7 +9,7 @@ import os
 from models.lightgcn.model import LightGCN
 from models.common import BaseModelTrainer
 from config import Config
-from data.datamodel import BaseDataInfo, GraphModelData
+from data.datamodel import GraphModelData
 from eval import ndcg_k, recall_k
 
 
@@ -33,8 +33,7 @@ def get_neg_items(rating: pd.Series, num_users: int, num_items: int, num_neg_sam
 class LightGCNTrainer(BaseModelTrainer):
     def __init__(self,
                  config: Config,
-                 data: GraphModelData,
-                 data_info: BaseDataInfo):
+                 data: GraphModelData):
         super().__init__()
         self.num_epochs = config.num_epochs
         self.num_neg_samples = config.num_neg_samples
@@ -42,12 +41,12 @@ class LightGCNTrainer(BaseModelTrainer):
         self.batch_size = config.batch_size
         self.reg_2 = config.reg_2
         self.device = config.device
-        self.num_users = data_info.num_users
-        self.num_items = data_info.num_items
         self.num_layers = config.num_layers
         self.emb_dim = config.emb_dim
         self.best_model_path = os.path.join(config.checkpoint_dir, f'lightgcn_{config.dataset}.pt')
         self.best_score = 0.0
+        self.num_users = data.num_users
+        self.num_items = data.num_items
         self.model = self._build_model(data.edge_index).to(self.device)
     
     def train(self, data: GraphModelData):
@@ -61,7 +60,8 @@ class LightGCNTrainer(BaseModelTrainer):
             self._fit(edge_index, train_loader, total_neg_items, optimizer)
             recall, ndcg = self._validate('val', data.rating_train, data.rating_val)
             self._update_best_model(ndcg)
-            
+        print('Training done.')
+        
     def test(self, data: GraphModelData):
         self._load_best_model()
         self._validate('test', data.rating_train_val, data.rating_test)
@@ -101,7 +101,7 @@ class LightGCNTrainer(BaseModelTrainer):
             print('Test model.')
         y_true = list()
         y_pred = list()
-        for user in rating_train.index:
+        for user in tqdm(rating_train.index):
             rated_items = rating_train[user]
             pred = self.model.recommend(user, rated_items, k)
             true = rating_valid[user].tolist()

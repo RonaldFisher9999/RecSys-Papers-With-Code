@@ -4,7 +4,7 @@ import random
 
 from models.lightgcn.trainer import LightGCNTrainer
 from models.common import BaseModelTrainer
-from data.datamodel import BaseDataInfo, BaseData
+from data.datamodel import BaseData
 from config import Config, config_parser
 
 def set_seeds(seed: int):
@@ -26,10 +26,10 @@ def prepare_training() -> Config:
         
     return config
     
-def build_model_trainer(config: Config, data: BaseData, data_info: BaseDataInfo) -> BaseModelTrainer:
+def build_model_trainer(config: Config, data: BaseData) -> BaseModelTrainer:
     print(f'Build "{config.model}" trainer.')
     if config.model == 'lightgcn':
-        trainer = LightGCNTrainer(config, data, data_info)
+        trainer = LightGCNTrainer(config, data)
     else:
         NotImplementedError('Other Models Are Not Implemented.')
         
