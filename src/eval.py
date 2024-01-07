@@ -1,7 +1,5 @@
 import numpy as np
 
-def eval_model(model, data):
-    pass
 
 def recall_k(y_true: list[list[int]], y_pred: list[list[int]], k: int) -> float:
     total_recall = 0
@@ -11,7 +9,7 @@ def recall_k(y_true: list[list[int]], y_pred: list[list[int]], k: int) -> float:
     
     return round(total_recall / len(y_true), 6)
 
-def ndcg_k(y_true: list[list[int]], y_pred: list[list[int]],  k: int):
+def ndcg_k(y_true: list[list[int]], y_pred: list[list[int]], k: int) -> float:
     total_ndcg = 0
     for true, pred in zip(y_true, y_pred):
         true = set(true)

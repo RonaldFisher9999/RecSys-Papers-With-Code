@@ -1,6 +1,5 @@
 from data.process import process_data
 from utils import prepare_training, build_model_trainer
-from eval import eval_model
 
 
 def main():
