@@ -3,9 +3,9 @@ import numpy as np
 import random
 import os
 
-from models.lightgcn.trainer import LightGCNTrainer
-from models.bpr.trainer import BPRTrainer
-from models.common import BaseModelTrainer
+from trainers.lightgcn import LightGCNTrainer
+from trainers.bpr import BPRTrainer
+from trainers.base_trainer import BaseModelTrainer
 from data.datamodel import BaseData
 from config import Config, config_parser
 

@@ -4,15 +4,16 @@ from tqdm import tqdm
 import pandas as pd
 import os
 
-from models.lightgcn.model import LightGCN
-from models.common import BaseModelTrainer
+from models.bpr import BPR
+from trainers.base_trainer import BaseModelTrainer
 from config import Config
 from data.datamodel import GraphModelData
 from eval import ndcg_k, recall_k
 from sampler import get_neg_items
 
 
-class LightGCNTrainer(BaseModelTrainer):
+
+class BPRTrainer(BaseModelTrainer):
     def __init__(self,
                  config: Config,
                  data: GraphModelData):
@@ -23,13 +24,12 @@ class LightGCNTrainer(BaseModelTrainer):
         self.batch_size = config.batch_size
         self.reg_2 = config.reg_2
         self.device = config.device
-        self.num_layers = config.num_layers
         self.emb_dim = config.emb_dim
         self.best_model_path = os.path.join(config.checkpoint_dir, f'{config.model}_{config.dataset}.pt')
         self.best_score = 0.0
         self.num_users = data.num_users
         self.num_items = data.num_items
-        self.model = self._build_model(data.edge_index).to(self.device)
+        self.model = self._build_model().to(self.device)
     
     def train(self, data: GraphModelData):
         edge_index = data.edge_index
@@ -48,10 +48,8 @@ class LightGCNTrainer(BaseModelTrainer):
         self._load_best_model()
         self._validate('test', data.rating_train_val, data.rating_test)
     
-    def _build_model(self, edge_index: torch.LongTensor):
-        return LightGCN(edge_index.to(self.device),
-                        self.num_users, self.num_items, self.num_layers, self.emb_dim,
-                        self.reg_2)
+    def _build_model(self):
+        return BPR(self.num_users, self.num_items, self.emb_dim, self.reg_2)
         
     def _fit(self,
              edge_index: torch.LongTensor,
