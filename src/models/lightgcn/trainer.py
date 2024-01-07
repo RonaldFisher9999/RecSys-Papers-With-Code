@@ -1,9 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
-import torch.nn as nn
 from tqdm import tqdm
 import pandas as pd
-import numpy as np
 import os
 
 from models.lightgcn.model import LightGCN
@@ -11,23 +9,7 @@ from models.common import BaseModelTrainer
 from config import Config
 from data.datamodel import GraphModelData
 from eval import ndcg_k, recall_k
-
-
-def get_neg_items(rating: pd.Series, num_users: int, num_items: int, num_neg_samples: int) -> torch.LongTensor:
-    print(f'Sample {num_neg_samples} negative items for each positive item.')
-    num_total_pos_items = sum(map(np.size, rating.values))
-    total_neg_items = np.zeros((num_neg_samples, num_total_pos_items))
-    total_items = np.arange(num_items)
-    offset = 0
-    for user in rating.index:
-        pos_items = rating[user]
-        candi_items = np.setdiff1d(total_items, pos_items)
-        neg_items = candi_items[np.random.randint(0, candi_items.size, pos_items.size * num_neg_samples)]
-        total_neg_items[:, offset : offset + pos_items.size] = neg_items.reshape(-1,  pos_items.size)
-        offset += pos_items.size
-    total_neg_items += num_users
-    
-    return torch.tensor(total_neg_items, dtype=torch.int64)
+from sampler import get_neg_items
 
 
 class LightGCNTrainer(BaseModelTrainer):
@@ -43,7 +25,7 @@ class LightGCNTrainer(BaseModelTrainer):
         self.device = config.device
         self.num_layers = config.num_layers
         self.emb_dim = config.emb_dim
-        self.best_model_path = os.path.join(config.checkpoint_dir, f'lightgcn_{config.dataset}.pt')
+        self.best_model_path = os.path.join(config.checkpoint_dir, f'{config.model}_{config.dataset}.pt')
         self.best_score = 0.0
         self.num_users = data.num_users
         self.num_items = data.num_items
