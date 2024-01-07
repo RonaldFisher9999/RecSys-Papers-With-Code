@@ -1,8 +1,10 @@
 import torch
 import numpy as np
 import random
+import os
 
 from models.lightgcn.trainer import LightGCNTrainer
+from models.bpr.trainer import BPRTrainer
 from models.common import BaseModelTrainer
 from data.datamodel import BaseData
 from config import Config, config_parser
@@ -17,12 +19,15 @@ def set_seeds(seed: int):
 
 def prepare_training() -> Config:
     config = config_parser()
-    for k, v in vars(config).items():
-        print(f'{k}: {v}')
-    set_seeds(config.seed)
+    
     if config.device == 'cuda' and not torch.cuda.is_available():
         print('GPU not available. Use CPU instead.')
         config.device = 'cpu'
+    os.makedirs(config.checkpoint_dir, exist_ok=True)
+    set_seeds(config.seed)
+    
+    for k, v in vars(config).items():
+        print(f'{k}: {v}')
         
     return config
     
@@ -30,6 +35,8 @@ def build_model_trainer(config: Config, data: BaseData) -> BaseModelTrainer:
     print(f'Build "{config.model}" trainer.')
     if config.model == 'lightgcn':
         trainer = LightGCNTrainer(config, data)
+    elif config.model == 'bpr':
+        trainer = BPRTrainer(config, data)
     else:
         NotImplementedError('Other Models Are Not Implemented.')
         

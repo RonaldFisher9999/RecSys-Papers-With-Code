@@ -109,6 +109,17 @@ def process_data(config: Config) -> BaseData:
             rating_test=rating_test,
             edge_index=edge_index,
         )
+    elif config.model in ['bpr']:
+        edge_index = get_edge_index(rating_train, num_users)
+        data = GraphModelData(
+            num_users=num_users,
+            num_items=num_items,
+            rating_train=rating_train,
+            rating_val=rating_val,
+            rating_train_val=rating_train_val,
+            rating_test=rating_test,
+            edge_index=edge_index,
+        )
     else:
         NotImplementedError('Other datasets are not available.')
         
