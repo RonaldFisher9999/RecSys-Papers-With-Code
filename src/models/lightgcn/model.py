@@ -5,6 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from models.common import BaseModel
+from models.loss import bpr_loss
 
 
 class LightGCN(BaseModel):
@@ -92,6 +93,3 @@ class LightGCN(BaseModel):
         return torch.topk(score, k).indices.cpu().tolist()
     
     
-def bpr_loss(pos_score: torch.Tensor,
-             neg_score: torch.Tensor) -> torch.Tensor:
-    return -nn.functional.logsigmoid(pos_score - neg_score).mean()
