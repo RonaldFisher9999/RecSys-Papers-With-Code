@@ -24,6 +24,9 @@ def load_raw_data(dataset: str) -> pd.DataFrame:
                                 sep='\t', header=None).iloc[:, [0, 4, 1]]
         rating_df.columns = ['user_id', 'item_id', 'timestamp']
         rating_df['timestamp'] = pd.to_datetime(rating_df['timestamp'], utc=True).dt.tz_localize(None)
+    elif dataset == 'yelp':
+        rating_df = pd.read_csv(os.path.join(data_dir, 'yelp2018.inter'), sep='\t', engine='python').iloc[:, [0, 1, 3]]
+        rating_df.columns = ['user_id', 'item_id', 'timestamp']
     else:
         raise NotImplementedError('Other datasets are not available.')
     

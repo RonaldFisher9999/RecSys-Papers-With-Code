@@ -23,7 +23,7 @@ class Config:
 def config_parser() -> Config:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dataset', type=str, choices=['movielens', 'gowalla'], default=Config.dataset)
+    parser.add_argument('--dataset', type=str, choices=['movielens', 'gowalla', 'yelp'], default=Config.dataset)
     parser.add_argument('--model', type=str, choices=['lightgcn', 'bpr'], default=Config.model)
     parser.add_argument('--seed', type=int, default=Config.seed)
     parser.add_argument('--min_user_cnt', type=int, default=Config.min_user_cnt)
