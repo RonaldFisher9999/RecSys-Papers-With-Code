@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from models.base_model import BaseModel
-from loss import bpr_loss
+from models.loss import bpr_loss
 
 
 class LightGCN(BaseModel):
