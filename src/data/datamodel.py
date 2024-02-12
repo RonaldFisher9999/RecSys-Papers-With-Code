@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import pandas as pd
+import numpy as np
 import torch
 
 
@@ -8,16 +9,18 @@ import torch
 class BaseData:
     num_users: int
     num_items: int
-    rating_train: pd.Series
-    rating_val: pd.Series
-    rating_train_val: pd.Series
-    rating_test: pd.Series
+    rating_train: dict[int, np.ndarray]
+    rating_val: dict[int, np.ndarray]
+    rating_test: dict[int, np.ndarray]
 
+@dataclass
+class MFModelData(BaseData):
+    u_i_index: np.ndarray
     
 @dataclass
 class GraphModelData(BaseData):
-    edge_index: torch.LongTensor
-    
+    u_i_index: np.ndarray
+    adj_mat: torch.sparse.Tensor
 
     
     

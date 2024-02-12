@@ -5,14 +5,15 @@ import pandas as pd
 import numpy as np
 import os
 
-from models.lightgcn import LightGCN
+from models.mf import MF
 from trainers.base_trainer import BaseModelTrainer
 from config import Config
 from data.datamodel import GraphModelData
 from eval import ndcg_k, recall_k
+from sampler import get_neg_items
 
 
-class LightGCNDataset(Dataset):
+class MFDataset(Dataset):
     def __init__(self,
                  u_i_index: np.ndarray,
                  rating: dict[int, np.ndarray],
@@ -23,7 +24,7 @@ class LightGCNDataset(Dataset):
         self.num_items = num_items
         self.num_neg_samples = num_neg_samples
         self.neg_candi = self._create_candidate(rating)
-
+        
     def _create_candidate(self, rating: dict[int, np.ndarray]) -> dict[int, np.ndarray]:
         print('Creating negative candidate items...')
         candi = dict()
@@ -43,8 +44,7 @@ class LightGCNDataset(Dataset):
 
         return user_index, pos_item_index, neg_item_index
 
-
-class LightGCNTrainer(BaseModelTrainer):
+class MFTrainer(BaseModelTrainer):
     def __init__(self,
                  config: Config,
                  data: GraphModelData):
@@ -56,12 +56,11 @@ class LightGCNTrainer(BaseModelTrainer):
         self.device = config.device
         self.num_users = data.num_users
         self.num_items = data.num_items
-        self.model = self._build_model(data.adj_mat, self.num_users, self.num_items,
-                                       config.num_layers, config.emb_dim, config.loss)
+        self.model = self._build_model(self.num_users, self.num_items, config.emb_dim, config.loss)
         self.loader = self._build_loader(data.u_i_index, data.rating_train)
         self.best_model_path = os.path.join(config.checkpoint_dir, f'{config.model}_{config.dataset}.pt')
         self.best_score = 0.0
-        
+    
     def train(self, data: GraphModelData):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         print(f'Start training for {self.num_epochs} epochs.')
@@ -76,23 +75,20 @@ class LightGCNTrainer(BaseModelTrainer):
         self._load_best_model()
         rating_train_val = self._merge_train_val(data.rating_train, data.rating_val)
         self._validate('test', rating_train_val, data.rating_test)
-    
+
     def _build_model(self,
-                     adj_mat: torch.sparse.Tensor,
                      num_users: int,
                      num_items: int,
-                     num_layers: int,
                      emb_dim: int,
-                     loss: str) -> LightGCN:
-        return LightGCN(adj_mat, num_users, num_items, num_layers,
-                        emb_dim, loss, self.device).to(self.device)
+                     loss: str):
+        return MF(num_users, num_items, emb_dim, loss).to(self.device)
     
     def _build_loader(self,
-                    u_i_index: np.ndarray,
-                    rating: dict[int, np.ndarray]) -> DataLoader:
-        dataset = LightGCNDataset(u_i_index, rating, self.num_items, self.num_neg_samples)
+                      u_i_index: np.ndarray,
+                      rating: dict[int, np.ndarray]) -> DataLoader:
+        dataset = MFDataset(u_i_index, rating, self.num_items, self.num_neg_samples)
         return DataLoader(dataset, batch_size=self.batch_size, shuffle=True, drop_last=False)
-    
+
     def _fit(self, optimizer: torch.optim.Optimizer):
         print('Train model.')
         total_loss = 0
@@ -108,25 +104,23 @@ class LightGCNTrainer(BaseModelTrainer):
 
     def _validate(self,
                   mode: str,
-                  rating_train: dict[int, np.ndarray],
-                  rating_valid: dict[int, np.ndarray],
-                  k: int=20) -> tuple[float, float]:
+                  rating_train: pd.Series,
+                  rating_valid: pd.Series,
+                  k: int=20,) -> tuple[float, float]:
         if mode == 'val':
             print('Validate model.')
         if mode == 'test':
             print('Test model.')
         y_true = list()
         y_pred = list()
-        need_update = True
         self.model.eval()
         with torch.no_grad():
             for user, rated_items in rating_train.items():
-                pred = self.model.recommend(user, rated_items, k, need_update)
-                need_update = False
+                pred = self.model.recommend(user, rated_items, k)
                 true = rating_valid[user]
                 y_true.append(true.tolist())
                 y_pred.append(pred)
-
+         
         recall = recall_k(y_true, y_pred, k)
         ndcg = ndcg_k(y_true, y_pred, k)
         print(f'Recall@{k}: {recall}')

@@ -1,36 +1,56 @@
 import torch
 import torch.nn as nn
-from torch_geometric.nn import LGConv
 import numpy as np
-from numpy.typing import NDArray
 
 from models.base_model import BaseModel
-from models.loss import bpr_loss
+from models.loss import bpr_loss, bce_loss
 
 
 class LightGCN(BaseModel):
     def __init__(self,
-                 edge_index: torch.LongTensor,
+                 adj_mat: torch.sparse.Tensor,
                  num_users: int,
                  num_items: int,
                  num_layers: int,
                  emb_dim: int,
-                 reg_2: float):
+                 loss: str,
+                 device: str):
         super().__init__()
-        self.edge_index = edge_index
+        self.norm_adj_mat = self._normalize_adj_mat(adj_mat).to(device)
         self.num_users = num_users
         self.num_items = num_items
         self.num_layers = num_layers
         self.emb_dim = emb_dim
-        self.reg_2 = reg_2
+        self.loss = loss
+        self.loss_fn = self._get_loss_function()
         
         self.user_emb = nn.Embedding(self.num_users, self.emb_dim)
         self.item_emb = nn.Embedding(self.num_items, self.emb_dim)
         self._reset_parameters()
-        self.conv_layers = nn.ModuleList([LGConv() for _ in range(self.num_layers)])
         
-        self.final_emb = None
+        self.user_final_emb, self.item_final_emb = None, None
     
+    def _normalize_adj_mat(self, adj_mat: torch.sparse.Tensor):
+        degree = torch.sparse.sum(adj_mat, dim=1).to_dense()
+        norm_degree = degree.pow(-0.5)
+        norm_degree[norm_degree == float('inf')] = 0
+        row, col = adj_mat.indices()[0], adj_mat.indices()[1]
+        values = norm_degree[row] * norm_degree[col]
+        norm_adj_mat = torch.sparse_coo_tensor(
+            indices=adj_mat.indices(), values=values, size=adj_mat.size(),
+            device=adj_mat.device
+        )
+        
+        return norm_adj_mat.to_sparse_csr()
+    
+    def _get_loss_function(self):
+        if self.loss == 'bpr':
+            return bpr_loss
+        elif self.loss == 'bce':
+            return bce_loss
+        else:
+            raise NotImplementedError('Loss function other than "bpr" or "bce" is not implemented.')
+        
     def _reset_parameters(self):
         for emb in self.modules():
             if isinstance(emb, nn.Embedding):
@@ -43,53 +63,44 @@ class LightGCN(BaseModel):
         
         return ego_emb
     
-    def forward(self) -> torch.Tensor:
+    def forward(self) -> tuple[torch.Tensor, torch.Tensor]:
         emb = self._get_ego_embeddings()
         emb_list = [emb]
 
-        for i in range(self.num_layers):
-            emb = self.conv_layers[i].forward(emb, self.edge_index)
+        for _ in range(self.num_layers):
+            emb = torch.sparse.mm(self.norm_adj_mat, emb)
             emb_list.append(emb)
         
         final_emb = torch.stack(emb_list, dim=1).mean(dim=1)
-        self.final_emb = final_emb.detach().clone()
+        user_final_emb = final_emb[:self.num_users, :]
+        item_final_emb = final_emb[self.num_users:, :]
         
-        return final_emb
+        return user_final_emb, item_final_emb
     
     def calc_loss(self,
                   user_index: torch.LongTensor,
                   pos_item_index: torch.LongTensor,
-                  neg_items: torch.LongTensor) -> torch.Tensor:
+                  neg_item_index: torch.LongTensor,
+                  **loss_kwargs) -> torch.Tensor:
         '''
         user_index: (batch_size,)
         pos_item_index: (batch_size,)
-        neg_items: (num_neg_samples, batch_size)
+        neg_item_index: (batch_size, num_neg_samples)
         '''
-        final_emb = self.forward()
+        user_final_emb, item_final_emb = self.forward()
+        user_emb = user_final_emb[user_index]
+        pos_item_emb = item_final_emb[pos_item_index]
+        pos_score = (user_emb * pos_item_emb).sum(dim=-1).unsqueeze(1)
+        
+        neg_item_emb = item_final_emb[neg_item_index]
+        neg_score = (user_emb.unsqueeze(1) * neg_item_emb).sum(dim=-1)
+        
+        return self.loss_fn(pos_score, neg_score, **loss_kwargs)
 
-        user_emb = final_emb[user_index]
-        pos_item_emb = final_emb[pos_item_index]
-        pos_score = (user_emb * pos_item_emb).sum(dim=1)
-        
-        neg_score = 0
-        for i in range(neg_items.shape[0]):
-            neg_item_emb = final_emb[neg_items[i]]
-            neg_score = neg_score + (user_emb * neg_item_emb).sum(dim=1)
-        
-        loss = bpr_loss(pos_score, neg_score)
-        total_neg_item_index = neg_items.ravel()
-        reg_loss = (user_emb.norm(2).pow(2)
-                    + pos_item_emb.norm(2).pow(2)
-                    + final_emb[total_neg_item_index].norm(2).pow(2)) * self.reg_2 / pos_score.shape[0]
-        
-        return loss + reg_loss
-
-    def recommend(self, user: int, rated_items: NDArray[np.int64], k: int=10) -> list[int]:
-        user_final_emb = self.final_emb[:self.num_users, :]
-        item_final_emb = self.final_emb[self.num_users:, :]
-        score = user_final_emb[user] @ item_final_emb.T
+    def recommend(self, user: int, rated_items: np.ndarray, k: int, need_update: bool) ->list[int]:
+        if need_update:
+            self.user_final_emb, self.item_final_emb = self.forward()
+        score = self.user_final_emb[user] @ self.item_final_emb.T
         score[rated_items] = -float('inf')
         
         return torch.topk(score, k).indices.cpu().tolist()
-    
-    

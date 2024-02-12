@@ -4,7 +4,7 @@ import random
 import os
 
 from trainers.lightgcn import LightGCNTrainer
-from trainers.bpr import BPRTrainer
+from trainers.mf import MFTrainer
 from trainers.base_trainer import BaseModelTrainer
 from data.datamodel import BaseData
 from config import Config, config_parser
@@ -35,9 +35,9 @@ def build_model_trainer(config: Config, data: BaseData) -> BaseModelTrainer:
     print(f'Build "{config.model}" trainer.')
     if config.model == 'lightgcn':
         trainer = LightGCNTrainer(config, data)
-    elif config.model == 'bpr':
-        trainer = BPRTrainer(config, data)
+    elif config.model == 'mf':
+        trainer = MFTrainer(config, data)
     else:
         NotImplementedError('Other Models Are Not Implemented.')
-        
+   
     return trainer
