@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
@@ -44,22 +43,19 @@ class MFDataset(Dataset):
 class MFTrainer(BaseModelTrainer):
     def __init__(self, config: Config, data: GraphModelData):
         super().__init__()
-        self.num_epochs = config.num_epochs
-        self.num_neg_samples = config.num_neg_samples
-        self.lr = config.lr
-        self.batch_size = config.batch_size
-        self.device = config.device
-        self.num_users = data.num_users
-        self.num_items = data.num_items
-        self.model = self._build_model(self.num_users, self.num_items, config.emb_dim, config.loss)
-        self.loader = self._build_loader(data.u_i_index, data.rating_train)
+        self.config = config
+        self.device = self.config.device
+        self.model = self._build_model(data.num_users, data.num_items, config.emb_dim, config.loss)
+        self.loader = self._build_loader(
+            data.u_i_index, data.rating_train, data.num_items, config.num_neg_samples, config.batch_size
+        )
         self.best_model_path = os.path.join(config.checkpoint_dir, f'{config.model}_{config.dataset}.pt')
         self.best_score = 0.0
 
     def train(self, data: GraphModelData):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        print(f'Start training for {self.num_epochs} epochs.')
-        for epoch in range(1, self.num_epochs + 1):
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.lr)
+        print(f'Start training for {self.config.num_epochs} epochs.')
+        for epoch in range(1, self.config.num_epochs + 1):
             print(f'Epoch {epoch}')
             self._fit(optimizer)
             recall, ndcg = self._validate('val', data.rating_train, data.rating_val)
@@ -74,9 +70,16 @@ class MFTrainer(BaseModelTrainer):
     def _build_model(self, num_users: int, num_items: int, emb_dim: int, loss: str):
         return MF(num_users, num_items, emb_dim, loss).to(self.device)
 
-    def _build_loader(self, u_i_index: np.ndarray, rating: dict[int, np.ndarray]) -> DataLoader:
-        dataset = MFDataset(u_i_index, rating, self.num_items, self.num_neg_samples)
-        return DataLoader(dataset, batch_size=self.batch_size, shuffle=True, drop_last=False)
+    def _build_loader(
+        self,
+        u_i_index: np.ndarray,
+        rating: dict[int, np.ndarray],
+        num_items: int,
+        num_neg_samples: int,
+        batch_size: int,
+    ) -> DataLoader:
+        dataset = MFDataset(u_i_index, rating, num_items, num_neg_samples)
+        return DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False)
 
     def _fit(self, optimizer: torch.optim.Optimizer):
         print('Train model.')
@@ -94,8 +97,8 @@ class MFTrainer(BaseModelTrainer):
     def _validate(
         self,
         mode: str,
-        rating_train: pd.Series,
-        rating_valid: pd.Series,
+        rating_train: dict[int, np.ndarray],
+        rating_valid: dict[int, np.ndarray],
         k: int = 20,
     ) -> tuple[float, float]:
         if mode == 'val':
