@@ -1,5 +1,5 @@
 from data.process import DataProcessor
-from utils import prepare_training, build_model_trainer
+from utils import build_model_trainer, prepare_training
 
 
 def main():
@@ -11,5 +11,5 @@ def main():
     trainer.test(data)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()

@@ -1,23 +1,19 @@
+import os
+
+import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-import pandas as pd
-import numpy as np
-import os
 
-from models.lightgcn import LightGCN
-from trainers.base_trainer import BaseModelTrainer
 from config import Config
 from data.datamodel import GraphModelData
 from eval import ndcg_k, recall_k
+from models.lightgcn import LightGCN
+from trainers.base_trainer import BaseModelTrainer
 
 
 class LightGCNDataset(Dataset):
-    def __init__(self,
-                 u_i_index: np.ndarray,
-                 rating: dict[int, np.ndarray],
-                 num_items: int,
-                 num_neg_samples: int):
+    def __init__(self, u_i_index: np.ndarray, rating: dict[int, np.ndarray], num_items: int, num_neg_samples: int):
         super().__init__()
         self.u_i_index = u_i_index
         self.num_items = num_items
@@ -34,7 +30,7 @@ class LightGCNDataset(Dataset):
 
     def __len__(self):
         return len(self.u_i_index)
-    
+
     def __getitem__(self, idx: int):
         user_index = self.u_i_index[idx, 0]
         pos_item_index = self.u_i_index[idx, 1]
@@ -45,9 +41,7 @@ class LightGCNDataset(Dataset):
 
 
 class LightGCNTrainer(BaseModelTrainer):
-    def __init__(self,
-                 config: Config,
-                 data: GraphModelData):
+    def __init__(self, config: Config, data: GraphModelData):
         super().__init__()
         self.num_epochs = config.num_epochs
         self.num_neg_samples = config.num_neg_samples
@@ -56,12 +50,13 @@ class LightGCNTrainer(BaseModelTrainer):
         self.device = config.device
         self.num_users = data.num_users
         self.num_items = data.num_items
-        self.model = self._build_model(data.adj_mat, self.num_users, self.num_items,
-                                       config.num_layers, config.emb_dim, config.loss)
+        self.model = self._build_model(
+            data.adj_mat, self.num_users, self.num_items, config.num_layers, config.emb_dim, config.loss
+        )
         self.loader = self._build_loader(data.u_i_index, data.rating_train)
         self.best_model_path = os.path.join(config.checkpoint_dir, f'{config.model}_{config.dataset}.pt')
         self.best_score = 0.0
-        
+
     def train(self, data: GraphModelData):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         print(f'Start training for {self.num_epochs} epochs.')
@@ -71,28 +66,21 @@ class LightGCNTrainer(BaseModelTrainer):
             recall, ndcg = self._validate('val', data.rating_train, data.rating_val)
             self._update_best_model(ndcg)
         print('Training done.')
-        
+
     def test(self, data: GraphModelData):
         self._load_best_model()
         rating_train_val = self._merge_train_val(data.rating_train, data.rating_val)
         self._validate('test', rating_train_val, data.rating_test)
-    
-    def _build_model(self,
-                     adj_mat: torch.sparse.Tensor,
-                     num_users: int,
-                     num_items: int,
-                     num_layers: int,
-                     emb_dim: int,
-                     loss: str) -> LightGCN:
-        return LightGCN(adj_mat, num_users, num_items, num_layers,
-                        emb_dim, loss, self.device).to(self.device)
-    
-    def _build_loader(self,
-                    u_i_index: np.ndarray,
-                    rating: dict[int, np.ndarray]) -> DataLoader:
+
+    def _build_model(
+        self, adj_mat: torch.sparse.Tensor, num_users: int, num_items: int, num_layers: int, emb_dim: int, loss: str
+    ) -> LightGCN:
+        return LightGCN(adj_mat, num_users, num_items, num_layers, emb_dim, loss, self.device).to(self.device)
+
+    def _build_loader(self, u_i_index: np.ndarray, rating: dict[int, np.ndarray]) -> DataLoader:
         dataset = LightGCNDataset(u_i_index, rating, self.num_items, self.num_neg_samples)
         return DataLoader(dataset, batch_size=self.batch_size, shuffle=True, drop_last=False)
-    
+
     def _fit(self, optimizer: torch.optim.Optimizer):
         print('Train model.')
         total_loss = 0
@@ -103,14 +91,12 @@ class LightGCNTrainer(BaseModelTrainer):
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-            
+
         print(f'Train Loss: {total_loss}')
 
-    def _validate(self,
-                  mode: str,
-                  rating_train: dict[int, np.ndarray],
-                  rating_valid: dict[int, np.ndarray],
-                  k: int=20) -> tuple[float, float]:
+    def _validate(
+        self, mode: str, rating_train: dict[int, np.ndarray], rating_valid: dict[int, np.ndarray], k: int = 20
+    ) -> tuple[float, float]:
         if mode == 'val':
             print('Validate model.')
         if mode == 'test':
@@ -131,25 +117,24 @@ class LightGCNTrainer(BaseModelTrainer):
         ndcg = ndcg_k(y_true, y_pred, k)
         print(f'Recall@{k}: {recall}')
         print(f'NDCG@{k}: {ndcg}')
-        
+
         return recall, ndcg
-    
+
     def _update_best_model(self, score: float):
         if self.best_score < score:
             print(f'Best Metric Updated {self.best_score} -> {score}')
             self.best_score = score
             torch.save(self.model, self.best_model_path)
-            
+
     def _load_best_model(self):
         self.model = torch.load(self.best_model_path, map_location=self.device)
-        
-    def _merge_train_val(self,
-                         rating_train: dict[int, np.ndarray],
-                         rating_val: dict[int, np.ndarray]) -> dict[int, np.ndarray]:
+
+    def _merge_train_val(
+        self, rating_train: dict[int, np.ndarray], rating_val: dict[int, np.ndarray]
+    ) -> dict[int, np.ndarray]:
         rating_train_val = dict()
         for user in rating_train.keys():
             train_val = np.append(rating_train[user], rating_val[user])
             rating_train_val[user] = train_val
-            
+
         return rating_train_val
-        

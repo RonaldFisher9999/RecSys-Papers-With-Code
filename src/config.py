@@ -1,6 +1,7 @@
 import argparse
 from dataclasses import dataclass
 
+
 @dataclass
 class Config:
     dataset: str = 'movielens'
@@ -20,6 +21,7 @@ class Config:
     num_epochs: int = 20
     device: str = 'cuda'
     checkpoint_dir: str = 'checkpoint/'
+
 
 def config_parser() -> Config:
     parser = argparse.ArgumentParser()
@@ -44,5 +46,5 @@ def config_parser() -> Config:
 
     args = parser.parse_args()
     config = Config(**vars(args))
-    
+
     return config
